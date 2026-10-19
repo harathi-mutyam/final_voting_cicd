@@ -1,82 +1,102 @@
-name: Voting App CI
+
+name: Voting App Microservices CI/CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths-ignore:
+      - "k8s-specifications/**"
+
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voting-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
 
 jobs:
 
-  vote-ci:
-    name: Vote - Python CI
-    runs-on: self-hosted
+  # ====================================
+  # 1. APPLICATION TESTS
+  # ====================================
+
+  test:
+    runs-on: [self-hosted, linux, x64, voting-runner]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [vote, result]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check Python
-        run: python3 --version
-
-      - name: Install vote dependencies
-        working-directory: vote
+      - name: Test ${{ matrix.service }}
+        env:
+          SERVICE: ${{ matrix.service }}
         run: |
-          python3 -m pip install -r requirements.txt --break-system-packages
+          set -e
 
-      - name: Python syntax check
-        working-directory: vote
-        run: |
-          python3 -m compileall .
+          if [ "$SERVICE" = "vote" ]; then
+            python3 -m venv .venv-vote
+            . .venv-vote/bin/activate
+            pip install -r vote/requirements.txt
+            python3 -m compileall -q vote
 
+            if [ -d vote/tests ]; then
+              pip install pytest
+              python3 -m pytest -q vote/tests
+            fi
 
-  result-ci:
-    name: Result - Node.js CI
-    needs: vote-ci
-    runs-on: self-hosted
+          elif [ "$SERVICE" = "result" ]; then
+            cd result
+
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+
+            node --check server.js
+
+            if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then
+              npm test
+            fi
+          fi
+
+  # ====================================
+  # 2. .NET WORKER BUILD
+  # ====================================
+
+  worker-build:
+    runs-on: [self-hosted, linux, x64, voting-runner]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check Node.js
-        run: node --version
-
-      - name: Check npm
-        run: npm --version
-
-      - name: Install dependencies
-        working-directory: result
-        run: npm ci
-
-
-  worker-ci:
-    name: Worker - Docker Build
-    needs: result-ci
-    runs-on: self-hosted
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check Docker
-        run: docker --version
-
-      - name: Build worker image
+      - name: Build Worker
         run: |
-          docker build -t voting-worker:ci ./worker
+          docker build \
+            -t voting-worker:ci-${GITHUB_SHA::12} \
+            ./worker
 
+  # ====================================
+  # 3. GITLEAKS SECRET SCAN
+  # ====================================
 
   gitleaks:
-    name: Gitleaks Secret Scan
-    needs: worker-ci
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux, x64, voting-runner]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -85,120 +105,223 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ====================================
+  # 4. SONARQUBE
+  # ====================================
 
-  sonarqube:
-    name: SonarQube Code Analysis
-    needs: gitleaks
-    runs-on: self-hosted
+  sonar:
+    runs-on: [self-hosted, linux, x64, voting-runner]
+
+    needs: [test, worker-build, gitleaks]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check Java
-        run: |
-          java -version
-
-      - name: Check SonarScanner
-        run: |
-          which sonar-scanner
-          sonar-scanner --version
-
-      - name: Test SonarQube Authentication
+      - name: SonarQube Analysis
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-        run: |
-          echo "Testing SonarQube authentication..."
 
-          if [ -z "$SONAR_TOKEN" ]; then
-            echo "ERROR: SONAR_TOKEN is empty"
-            exit 1
-          fi
+  # ====================================
+  # 5. BUILD + TRIVY + DOCKER HUB PUSH
+  # ====================================
 
-          if [ -z "$SONAR_HOST_URL" ]; then
-            echo "ERROR: SONAR_HOST_URL is empty"
-            exit 1
-          fi
+  build-push:
+    runs-on: [self-hosted, linux, x64, voting-runner]
 
-          RESPONSE=$(curl -sS \
-            -u "$SONAR_TOKEN:" \
-            "$SONAR_HOST_URL/api/authentication/validate")
+    needs: sonar
 
-          echo "Authentication response:"
-          echo "$RESPONSE"
-
-          if echo "$RESPONSE" | grep -q '"valid":true'; then
-            echo "SUCCESS: SonarQube authentication successful"
-          else
-            echo "ERROR: SonarQube authentication failed"
-            exit 1
-          fi
-
-      - name: Run SonarQube Analysis
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-        run: |
-          echo "Starting SonarQube analysis..."
-
-          sonar-scanner \
-            -Dsonar.host.url="$SONAR_HOST_URL" \
-            -Dsonar.login="$SONAR_TOKEN"
-
-          echo "SonarQube analysis completed successfully"
-
-
-  docker-build-push:
-    name: Build and Push Docker Images
-    needs: sonarqube
-    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [vote, result, worker]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check Docker
-        run: docker --version
+      - name: Verify Docker Hub username
+        run: |
+          test -n "$DOCKERHUB_USERNAME"
 
-      - name: Login to Docker Hub
+      - name: Docker Hub Login
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Vote image
+      - name: Build Docker image
+        env:
+          COMPONENT: ${{ matrix.component }}
         run: |
+          TAG="${GITHUB_SHA::12}"
+
+          IMAGE="${DOCKERHUB_USERNAME}/voting-${COMPONENT}:${TAG}"
+
           docker build \
-            -t ${{ vars.DOCKERHUB_USERNAME }}/voting-vote:latest \
-            ./vote
+            -t "$IMAGE" \
+            "./${COMPONENT}"
 
-      - name: Build Result image
-        run: |
-          docker build \
-            -t ${{ vars.DOCKERHUB_USERNAME }}/voting-result:latest \
-            ./result
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
-      - name: Build Worker image
+      - name: Trivy vulnerability scan
         run: |
-          docker build \
-            -t ${{ vars.DOCKERHUB_USERNAME }}/voting-worker:latest \
-            ./worker
+          trivy image \
+            --scanners vuln \
+            --exit-code 0 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            "$IMAGE"
 
-      - name: Push Vote image
+      - name: Push Docker image
+        if: >
+          github.event_name != 'pull_request' &&
+          github.ref == 'refs/heads/main'
         run: |
-          docker push \
-            ${{ vars.DOCKERHUB_USERNAME }}/voting-vote:latest
+          docker push "$IMAGE"
 
-      - name: Push Result image
-        run: |
-          docker push \
-            ${{ vars.DOCKERHUB_USERNAME }}/voting-result:latest
+      - name: Logout Docker Hub
+        if: always()
+        run: docker logout || true
 
-      - name: Push Worker image
+  # ====================================
+  # 6. GITOPS UPDATE
+  # ====================================
+
+  gitops-update:
+    runs-on: [self-hosted, linux, x64, voting-runner]
+
+    needs: build-push
+
+    if: >
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Update Kubernetes manifest image tags
+        env:
+          TAG: ${{ github.sha }}
         run: |
-          docker push \
-            ${{ vars.DOCKERHUB_USERNAME }}/voting-worker:latest
-            
+          set -e
+          SHORT_TAG="${TAG:0:12}"
+          export SHORT_TAG
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          root = Path("k8s-specifications")
+          user = os.environ["DOCKERHUB_USERNAME"]
+          tag = os.environ["SHORT_TAG"]
+
+          if not root.is_dir():
+              raise SystemExit(
+                  "ERROR: k8s-specifications directory missing"
+              )
+
+          components = ("vote", "result", "worker")
+          counts = {name: 0 for name in components}
+
+          paths = sorted(
+              list(root.rglob("*.yaml")) +
+              list(root.rglob("*.yml"))
+          )
+
+          for path in paths:
+              original = path.read_text()
+              lines = original.splitlines(keepends=True)
+              updated = []
+
+              for line in lines:
+                  match = re.match(
+                      r'^(\s*(?:-\s*)?image:\s*)(["\']?)([^\s"\']+)(["\']?)(.*)$',
+                      line
+                  )
+
+                  if not match:
+                      updated.append(line)
+                      continue
+
+                  prefix, q1, old, q2, rest = match.groups()
+
+                  image_name = old.rsplit("/", 1)[-1]
+                  image_name = re.split(
+                      r"[:@]", image_name, maxsplit=1
+                  )[0]
+
+                  component = next(
+                      (
+                          c for c in components
+                          if image_name == f"voting-{c}"
+                      ),
+                      None
+                  )
+
+                  if component is None:
+                      updated.append(line)
+                      continue
+
+                  new_image = (
+                      f"{user}/voting-{component}:{tag}"
+                  )
+
+                  updated.append(
+                      f"{prefix}{q1}{new_image}{q2}{rest}"
+                  )
+                  counts[component] += 1
+
+              new_content = "".join(updated)
+
+              if new_content != original:
+                  path.write_text(new_content)
+                  print(f"Updated {path}")
+
+          print("Image matches:", counts)
+
+          missing = [
+              c for c in components if counts[c] == 0
+          ]
+
+          if missing:
+              raise SystemExit(
+                  "ERROR: No matching image for: "
+                  + ", ".join(missing)
+                  + ". Check deployment manifests."
+              )
+          PY
+
+      - name: Verify manifest changes
+        run: |
+          git diff --check
+          git diff -- k8s-specifications/
+
+      - name: Commit Kubernetes GitOps changes
+        run: |
+          git config user.name "voting-ci[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add k8s-specifications/
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m \
+            "ci: update voting images ${GITHUB_SHA::12} [skip ci]"
+
+          git push origin HEAD:main
+
