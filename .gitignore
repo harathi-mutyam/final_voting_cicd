@@ -4,3 +4,15 @@ bin/
 obj/
 .vs/
 node_modules/
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/terraform.tfvars
+**/*.auto.tfvars
+**/tfplan
+**/tfplan.*
+terraform-backup-*/
+*.pem
+*.key
+.env
+.env.*
