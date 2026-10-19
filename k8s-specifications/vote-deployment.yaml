@@ -17,6 +17,5 @@ spec:
     spec:
       containers:
         - name: vote
-          image: harathi2026/voting-vote:latest
-          ports:
+          image: harathi2026/voting-vote:ba64a61f8a47          ports:
             - containerPort: 80

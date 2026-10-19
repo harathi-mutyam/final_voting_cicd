@@ -16,5 +16,4 @@ spec:
         app: worker
     spec:
       containers:
-        - image: harathi2026/voting-worker:latest
-          name: worker
+        - image: harathi2026/voting-worker:ba64a61f8a47          name: worker
