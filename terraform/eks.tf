@@ -25,7 +25,13 @@ resource "aws_eks_node_group" "voting" {
   subnet_ids      = aws_subnet.public[*].id
   instance_types  = [var.node_instance_type]
   capacity_type   = "ON_DEMAND"
-  disk_size       = 40
+
+  launch_template {
+    id      = aws_launch_template.voting_nodes.id
+    version = aws_launch_template.voting_nodes.latest_version
+  }
+
+
 
   scaling_config {
     desired_size = var.node_desired_size
