@@ -33,7 +33,6 @@ spec:
               memory: 64Mi
             limits:
               memory: 256Mi
-
 ---
 apiVersion: v1
 kind: Service
@@ -42,6 +41,7 @@ metadata:
   namespace: voting
 spec:
   type: LoadBalancer
+  sessionAffinity: ClientIP
   selector:
     app: result
   ports:
