@@ -8,16 +8,37 @@ var express = require('express'),
     server = require('http').Server(app),
     io = require('socket.io')(server);
 
+const { createClient } = require('redis');
+
 var port = process.env.PORT || 4000;
 
 var dbHost = process.env.DB_HOST || 'db';
 var dbPassword = process.env.DB_PASSWORD;
+var redisHost = process.env.REDIS_HOST || 'redis';
 
 if (!dbPassword) {
   console.error('DB_PASSWORD environment variable is required');
   process.exit(1);
 }
 
+// Redis client for latest-vote demo mode
+const redisClient = createClient({
+  url: `redis://${redisHost}:6379`
+});
+
+redisClient.on('error', function (err) {
+  console.error('Redis connection error:', err.message);
+});
+
+redisClient.connect()
+  .then(function () {
+    console.log('Connected to Redis');
+  })
+  .catch(function (err) {
+    console.error('Unable to connect to Redis:', err.message);
+  });
+
+// Socket.IO
 io.on('connection', function (socket) {
   socket.emit('message', { text: 'Welcome!' });
 
@@ -26,6 +47,7 @@ io.on('connection', function (socket) {
   });
 });
 
+// PostgreSQL connection
 var pool = new Pool({
   host: dbHost,
   port: 5432,
@@ -60,31 +82,27 @@ async.retry(
   }
 );
 
-function getVotes() {
-  pool.query(
-    'SELECT vote, COUNT(id) AS count FROM votes GROUP BY vote',
-    [],
-    function (err, result) {
-      if (err) {
-        console.error('Error performing query: ' + err.message);
-      } else {
-        var votes = collectVotesFromResult(result);
-        io.sockets.emit('scores', JSON.stringify(votes));
-      }
-
-      setTimeout(getVotes, 1000);
+// Demo mode: display only the latest processed vote
+async function getVotes() {
+  try {
+    if (!redisClient.isReady) {
+      throw new Error('Redis client is not ready');
     }
-  );
-}
 
-function collectVotesFromResult(result) {
-  var votes = { a: 0, b: 0 };
+    const latestVote = await redisClient.get('demo:last-vote');
 
-  result.rows.forEach(function (row) {
-    votes[row.vote] = parseInt(row.count, 10);
-  });
+    const votes = {
+      a: latestVote === 'a' ? 1 : 0,
+      b: latestVote === 'b' ? 1 : 0
+    };
 
-  return votes;
+    io.sockets.emit('scores', JSON.stringify(votes));
+
+  } catch (err) {
+    console.error('Error retrieving latest demo vote:', err.message);
+  } finally {
+    setTimeout(getVotes, 1000);
+  }
 }
 
 app.use(cookieParser());

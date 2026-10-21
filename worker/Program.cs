@@ -78,7 +78,15 @@ namespace Worker
                             $"Processing vote for '{vote.vote}' by '{vote.voter_id}'");
 
                         UpdateVote(pgsql, vote.voter_id, vote.vote);
-                    }
+
+                        // Demo mode: save the latest successfully processed vote.
+                        // Existing PostgreSQL records remain unchanged.
+                       if (vote.vote == "a" || vote.vote == "b")
+                       {
+                           redis.StringSet("demo:last-vote", vote.vote);
+                       }
+
+		    }
                     else
                     {
                         using (var keepAliveCommand = pgsql.CreateCommand())
