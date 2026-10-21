@@ -16,8 +16,7 @@ spec:
     spec:
       containers:
         - name: result
-          image: harathi2026/voting-result:latest
-          ports:
+          image: harathi2026/voting-result:c0556128f7b3          ports:
             - containerPort: 80
           env:
             - name: DB_HOST
