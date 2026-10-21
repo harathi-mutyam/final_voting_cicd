@@ -41,6 +41,7 @@ metadata:
   name: result
   namespace: voting
 spec:
+  type: LoadBalancer
   selector:
     app: result
   ports:
