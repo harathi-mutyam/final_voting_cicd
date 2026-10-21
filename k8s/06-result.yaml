@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,20 +7,33 @@ metadata:
 spec:
   replicas: 2
   selector:
-    matchLabels: {app: result}
+    matchLabels:
+      app: result
   template:
     metadata:
-      labels: {app: result}
+      labels:
+        app: result
     spec:
       containers:
         - name: result
           image: harathi2026/voting-result:latest
-          ports: [{containerPort: 80}]
+          ports:
+            - containerPort: 80
           env:
-            - {name: DB_HOST, value: db}
+            - name: DB_HOST
+              value: db
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-auth
+                  key: password
           resources:
-            requests: {cpu: 50m, memory: 64Mi}
-            limits: {memory: 256Mi}
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+
 ---
 apiVersion: v1
 kind: Service
@@ -27,5 +41,8 @@ metadata:
   name: result
   namespace: voting
 spec:
-  selector: {app: result}
-  ports: [{port: 80, targetPort: 80}]
+  selector:
+    app: result
+  ports:
+    - port: 80
+      targetPort: 80

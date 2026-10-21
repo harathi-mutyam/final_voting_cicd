@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,17 +7,29 @@ metadata:
 spec:
   replicas: 1
   selector:
-    matchLabels: {app: worker}
+    matchLabels:
+      app: worker
   template:
     metadata:
-      labels: {app: worker}
+      labels:
+        app: worker
     spec:
       containers:
         - name: worker
           image: harathi2026/voting-worker:latest
           env:
-            - {name: REDIS_HOST, value: redis}
-            - {name: DB_HOST, value: db}
+            - name: REDIS_HOST
+              value: redis
+            - name: DB_HOST
+              value: db
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-auth
+                  key: password
           resources:
-            requests: {cpu: 100m, memory: 128Mi}
-            limits: {memory: 512Mi}
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
