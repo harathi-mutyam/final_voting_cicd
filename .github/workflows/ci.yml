@@ -246,7 +246,7 @@ jobs:
 
               for line in lines:
                   match = re.match(
-                      r'^(\s*(?:-\s*)?image:\s*)(["\']?)([^\s"\']+)(["\']?)(.*)$',
+                      r'^([ \t]*(?:-[ \t]*)?image:[ \t]*)(["\']?)([^\s"\']+)(["\']?)([^\r\n]*)(\r?\n?)$',
                       line
                   )
 
@@ -254,7 +254,7 @@ jobs:
                       updated.append(line)
                       continue
 
-                  prefix, q1, old, q2, rest = match.groups()
+                  prefix, q1, old, q2, rest, newline = match.groups()
 
                   image_name = old.rsplit("/", 1)[-1]
                   image_name = re.split(
@@ -278,7 +278,7 @@ jobs:
                   )
 
                   updated.append(
-                      f"{prefix}{q1}{new_image}{q2}{rest}"
+                      f"{prefix}{q1}{new_image}{q2}{rest}{newline}"
                   )
                   counts[component] += 1
 
