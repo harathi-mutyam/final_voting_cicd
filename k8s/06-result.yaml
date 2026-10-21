@@ -41,7 +41,7 @@ metadata:
   name: result
   namespace: voting
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   sessionAffinity: ClientIP
   selector:
     app: result

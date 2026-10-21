@@ -27,6 +27,6 @@ metadata:
   name: vote
   namespace: voting
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector: {app: vote}
   ports: [{port: 80, targetPort: 80}]
