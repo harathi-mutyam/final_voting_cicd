@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: harathi2026/voting-worker:bc104ad788b3
+          image: harathi2026/voting-worker:22e9fc8fd20e
           env:
             - name: REDIS_HOST
               value: redis
