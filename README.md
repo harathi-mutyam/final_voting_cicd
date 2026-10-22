@@ -613,6 +613,12 @@ git push origin main
 
 **open your project github in browser-->actions-->runner-->observe workflow is running.If not running Select your workflow and use Run workflow if workflow_dispatch is enabled.**
 
+<p align="center">
+  <img src="./images/1.png"
+       alt="cicd workflow success"
+       width="900" />
+</p>
+
 ## Step 8 — Infrastructure creation
 
 **Open server gitbash Terminal**
