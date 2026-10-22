@@ -1224,23 +1224,38 @@ here we required password for grafana
 kubectl get secret monitoring-grafana \
   -n monitoring \
   -o jsonpath='{.data.admin-password}' | base64 -d
+Echo
 ```
 
-Echo
+
 Copy the password paste it in browser
+
 After login into Grafana Verify Prometheus data source
+
 **Open Connections → Data sources-->Select the existing Prometheus data source-->Verify that the URL points to your monitoring Prometheus service -->Click Save & test. Or Test -->click Test again**
+
 Expected result: The Prometheus data source is working.
-Test metrics
+
+### Test metrics
+
 **Open Explore, select Prometheus -->select code(on Right side) -->type: up-->run symbol (refresh Symbol on Top with blue colour):**
+
 A value of 1 indicates that Prometheus successfully scraped that target.
+
 Next, check your Voting App Pods:
+```bash
 kube_pod_status_phase{namespace="voting",phase="Running"}
+```
 For Pods currently in the Running phase, the corresponding series should have a value of 1.
+
 Verify Kubernetes Dashboards
+
 In Grafana browser Navigate to Dashboards → Browse.
+
 Look for the dashboard:
-Kubernetes / Compute Resources / Namespace (Pods)
+
+**Kubernetes / Compute Resources / Namespace (Pods)**
+
 **Open it and select:**
 | • | Data source: Prometheus |
 | --- | --- |
@@ -1268,15 +1283,20 @@ kubectl port-forward -n monitoring \
 ```
 
 Forwarding from 0.0.0.0:9093 -> 9093
+
 **Open browser access alertmanager with this ip**
+
 http://server_public_ec2_ip:9093
 
-Use an SSH tunnel for port 9093 if accessing it from your Windows computer, then open http://localhost:9093. Or http://server_public_ec2_ip:9093
+Use an SSH tunnel for port 9093 if accessing it from your Windows computer, then open **http://localhost:9093. Or http://server_public_ec2_ip:9093**
+
 Check the Alerts and Silences sections. Installing Alertmanager does not automatically configure email notifications.
+
 
 ## Step 18 — Check Cluster Capacity Before Loki
 
 **Open server gitbash terminal**
+
 ```bash
 kubectl top nodes
 kubectl top pods -n monitoring
@@ -1284,11 +1304,13 @@ kubectl top pods -n voting
 ```
 
 Also check available memory and CPU allocations:
+
 ```bash
 kubectl describe nodes | grep -A 8 "Allocated resources:"
 ```
 
 Notes for reference
+
 | Metric | Node 1 | Node 2 |
 | --- | --- | --- |
 | CPU utilization | 5% | 6% |
@@ -1297,10 +1319,17 @@ Notes for reference
 | Memory requests | 31% | 47% |
 | Memory limits | 110% | 167% |
 
+
 Interpretation: CPU capacity is sufficient at the moment. Memory is the main constraint, particularly on Node 2.
-Memory limits above 100% indicate overcommitment, not necessarily a problem by themselves. However, if multiple containers approach their limits simultaneously, you could experience memory pressure or OOMKilled containers.
-2. Monitoring Pod analysis
+
+Memory limits above 100% indicate overcommitment, not necessarily a problem by themselves. However, if multiple containers approach their limits simultaneously, you could 
+
+experience memory pressure or OOMKilled containers.
+
+**2. Monitoring Pod analysis**
+   
 Your monitoring stack is using approximately:
+
 | Component | Memory |
 | --- | --- |
 | Grafana | 444 MiB |
@@ -1312,13 +1341,21 @@ Your monitoring stack is using approximately:
 | Total | 876 MiB |
 
 Grafana is using 444 MiB against its configured 512 MiB limit, leaving only about 68 MiB of headroom. This is worth monitoring because dashboards and queries can increase memory usage.
+
 Prometheus is using 348 MiB against its 1 GiB limit, which is currently acceptable.
-3. Recommendation before Loki installation
+
+**3. Recommendation before Loki installation**
+   
 I do not recommend installing Loki immediately with the default Helm chart values.
-For your two-node c7i-flex.large cluster, use a deliberately lightweight Loki configuration. Even then, you should first inspect available allocatable resources and verify whether Grafana is approaching its memory limit.
+
+For your two-node c7i-flex.large cluster, use a deliberately lightweight Loki configuration. Even then, you should first inspect available allocatable resources and verify 
+
+whether Grafana is approaching its memory limit.
 
 Check resource pressure before installing loki because here I am using c7i-flex.Lrage for nodes
+
 **Open server gitbash terminal**
+
 ```bash
 kubectl get nodes -o wide
 kubectl describe nodes | grep -E \
@@ -1338,6 +1375,7 @@ Here I am using an Amazon S3 bucket instead of filesystem storage for Loki
 ## Step 19 — Configure Amazon S3 Storage for Loki
 
 **Open server ec2 gitbahs terminal**
+
 ```bash
 cd ~/final_voting_cicd
 export AWS_REGION=eu-north-1
@@ -1348,14 +1386,16 @@ echo "Cluster: $CLUSTER_NAME"
 echo "Region: $AWS_REGION"
 ```
 
-Create two S3 buckets
+### Create two S3 buckets
+
 Grafana recommends separate buckets for Loki chunks and ruler data. An admin bucket is not required for open-source Loki.
+
 ```bash
 export LOKI_CHUNKS_BUCKET="voting-loki-chunks-${ACCOUNT_ID}-${AWS_REGION}"
 export LOKI_RULER_BUCKET="voting-loki-ruler-${ACCOUNT_ID}-${AWS_REGION}"
 ```
 
-Create the buckets:
+#### Create the buckets:
 ```bash
 aws s3api create-bucket \
   --bucket "$LOKI_CHUNKS_BUCKET" \
@@ -1371,16 +1411,18 @@ aws s3api create-bucket \
 ```
 
 If either bucket already exists in your account, verify its region and reuse it rather than recreating it.
-Block public access:
+
+#### Block public access:
+
 ```bash
 for BUCKET in "$LOKI_CHUNKS_BUCKET" "$LOKI_RULER_BUCKET"; do
   aws s3api put-public-access-block \
     --bucket "$BUCKET" \
     --public-access-block-configuration \
     BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-```
 
-```bash
+
+
   aws s3api put-bucket-encryption \
     --bucket "$BUCKET" \
     --server-side-encryption-configuration \
@@ -1389,13 +1431,17 @@ done
 ```
 
 **verify:**
+
 ```bash
 aws s3 ls | grep voting-loki
 ```
 
-Create a dedicated IAM policy
+#### Create a dedicated IAM policy
+
 Do not put AWS access keys inside loki-values.yaml. We will grant Loki access to only the two S3 buckets using an IAM role.
-Create the IAM policy document:
+
+#### Create the IAM policy document:
+
 ```bash
 cat > /tmp/voting-loki-s3-policy.json <<EOF
 {
@@ -1426,16 +1472,21 @@ cat > /tmp/voting-loki-s3-policy.json <<EOF
 EOF
 ```
 
-Create the IAM policy:
+#### Create the IAM policy:
 ```bash
 aws iam create-policy \
   --policy-name VotingLokiS3Policy \
   --policy-document file:///tmp/voting-loki-s3-policy.json
 ```
 
-Configure IAM authentication for Loki
-For EKS, IRSA allows a Kubernetes ServiceAccount to assume a dedicated IAM role through the cluster's OIDC identity provider. This avoids static credentials in Helm values
-First check whether the OIDC provider is associated with your cluster
+#### Configure IAM authentication for Loki
+
+For EKS, IRSA allows a Kubernetes ServiceAccount to assume a dedicated IAM role through the cluster's OIDC identity provider. 
+
+This avoids static credentials in Helm values
+
+**First check whether the OIDC provider is associated with your cluster**
+
 ```bash
 aws eks describe-cluster \
   --name "$CLUSTER_NAME" \
@@ -1449,7 +1500,9 @@ eksctl version
 ```
 
 here we will get error eksctl not installed
+
 Install eksctl and configure Loki IAM access
+
 **Open server gitbash terminal Install eksctl**
 ```bash
 ARCH=amd64
@@ -1468,13 +1521,13 @@ rm -f eksctl "eksctl_${PLATFORM}.tar.gz"
 eksctl version   #we will get eksctl version number.
 ```
 
-Create logging namespace
+#### Create logging namespace
 ```bash
 kubectl create namespace logging \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-Create the IAM ServiceAccount:
+#### Create the IAM ServiceAccount:
 ```bash
 eksctl create iamserviceaccount \
   --cluster "$CLUSTER_NAME" \
@@ -1486,27 +1539,33 @@ eksctl create iamserviceaccount \
   --approve
 ```
 
-If the OIDC provider has not been associated, associate it first:
+**If the OIDC provider has not been associated, associate it first:**
+
 ```bash
 eksctl utils associate-iam-oidc-provider \
   --cluster "$CLUSTER_NAME" --region "$AWS_REGION" \
   --approve
 ```
 
-Then rerun the IAM ServiceAccount creation command.
+#### Then rerun the IAM ServiceAccount creation command.
+
 **Verify:**
 ```bash
 kubectl get serviceaccount loki -n logging -o yaml
 ```
 
 You should see an annotation similar to:
+
 eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/VotingLokiS3Role
+
 The Helm configuration will reuse this ServiceAccount rather than create a new one.
 
 ## Step 20 — Configure Loki Helm Values for S3
 
 Add Grafana community Helm repository
+
 The Loki chart is now maintained in the Grafana community Helm repository
+
 ```bash
 helm repo add grafana-community \
   https://grafana-community.github.io/helm-charts
@@ -1516,16 +1575,21 @@ aws s3 ls
 ```
 
 copy the bucket values .Replace the two bucket placeholders with your actual bucket names.so open
+```bash
 vim nano logging/loki-values.yaml
-replace chunks bucket name , ruler bucket name in loki-values.yaml file and save it
-Validate the Loki configuration
+```
+**replace chunks bucket name , ruler bucket name** in **loki-values.yaml** file and save it
+
+#### Validate the Loki configuration
+
 Because Helm chart options change between releases, validate the selected chart before installing.
+
 ```bash
 helm show values grafana-community/loki \
   > /tmp/loki-default-values.yaml
 ```
 
-Render the deployment:
+#### Render the deployment:
 ```bash
 helm template loki grafana-community/loki \
   --version 19.0.3 \
@@ -1543,7 +1607,7 @@ kubectl top nodes
 kubectl get pods -A
 ```
 
-If sufficient capacity remains, install:
+**If sufficient capacity remains, install:**
 ```bash
 helm upgrade --install loki  grafana-community/loki \
   --version 19.0.3  -n logging \
@@ -1565,7 +1629,7 @@ sudo hostnamectl set-hostname loki-port-forward
 exec bash
 ```
 
-Check Loki's readiness endpoint using the service name shown by kubectl get svc:
+**Check Loki's readiness endpoint using the service name shown by kubectl get svc:**
 ```bash
 kubectl port-forward -n logging \
   svc/loki-gateway 3100:3100
@@ -1589,12 +1653,14 @@ A healthy Loki instance should return ready.
 | --- | --- |
 | 2. | Select Add new data source. |
 | 3. | Choose Loki. |
-| 4. | Enter the internal Loki service URL, for example |
+| 4. | Enter the internal Loki service URL, |
 
-http://loki-gateway.logging.svc.cluster.local/
-5.	Click Save & test.
+for example   **http://loki-gateway.logging.svc.cluster.local/**
+| 5.|	Click Save & test.|
 This configures Grafana to query Loki, but logs will not appear until Grafana Alloy is installed and configured to collect Kubernetes container logs.
+
 Grafana Alloy will be the next installation step.
+
 
 ## Step 23 — Verify S3 Storage
 
@@ -1605,25 +1671,33 @@ echo "$LOKI_RULER_BUCKET"
 ```
 
 After Alloy begins forwarding logs, check that Loki is writing objects into S3:
+
 ```bash
 aws s3 ls "s3://${LOKI_CHUNKS_BUCKET}/" --recursive --summarize
 ```
 
 You can also inspect the ruler bucket:
+
 ```bash
 aws s3 ls "s3://${LOKI_RULER_BUCKET}/" --recursive
 ```
 
 The ruler bucket may remain empty until you configure Loki recording or alerting rules.
+
 Confirm log ingestion in Grafana
+
 **Open Grafana and navigate to:**
+
 Explore → Loki datasource-->select code
+
 Run this LogQL query:
+
 ```bash
 {namespace="voting"}
 ```
 
 It returns nothing because alloy not yet installed
+
 **Open server gitbash terminal**
 ```bash
 kubectl get pods -n logging -o wide
@@ -1634,14 +1708,16 @@ helm list -A
 ## Step 24 — check the Configuration of loki-values.yaml
 
 After verifying the installation:
+
 ```bash
 cd ~/final_voting_cicd
 cat logging/loki-values.yaml
 ```
 
-optional command if you change any thing in logging/loki-values.yaml
-then only push it
+#### optional command if you change any thing in logging/loki-values.yaml
 ```bash
+then only push it
+
 git status
 git add logging/loki-values.yaml
 git commit -m "add: configure Loki S3 storage for voting app logs"
@@ -1656,12 +1732,17 @@ cd ~/final_voting_cicd
 kubectl get daemonsets -A
 kubectl get deployments -A | grep -i alloy
 kubectl top nodes
+
 # Add Grafana repository
+
 helm repo add grafana \
   https://grafana.github.io/helm-charts
 helm repo update
+
 # Check committed configuration
+
 cat logging/alloy-values.yaml
+
 # Render Helm manifests
 helm template alloy grafana/alloy \
   --version 1.14.1 \
@@ -1671,6 +1752,7 @@ helm template alloy grafana/alloy \
 ```
 
 If the command finishes without errors, the Helm templates have rendered successfully.
+
 # Verify DaemonSet
 ```bash
 grep -A 3 'kind: DaemonSet' \
@@ -1678,6 +1760,7 @@ grep -A 3 'kind: DaemonSet' \
 ```
 
 # Verify node-name environment variable
+
 ```bash
 grep -A 6 'name: K8S_NODE_NAME' \
   /tmp/voting-alloy-rendered.yaml
@@ -1692,15 +1775,19 @@ helm upgrade --install alloy grafana/alloy \
   --wait \
   --timeout 10m
 # Verify installation
+
 kubectl get daemonsets -n logging
 kubectl get pods -n logging
 helm list -n logging
 kubectl top pods -n logging
 kubectl top nodes
+
 ```
 
 Total Alloy memory usage: 87 MiB across both worker nodes.
+
 Optional command Check Alloy runtime logs
+
 ```bash
 kubectl logs -n logging \
   -l app.kubernetes.io/name=alloy \
@@ -1710,6 +1797,7 @@ kubectl logs -n logging \
 ```
 
 Check for errors such as permission denied, connection refused, failed to send batch, or configuration parsing failures.
+
 ```bash
 kubectl get svc -n logging
 ```
@@ -1719,22 +1807,35 @@ Confirm that loki-gateway exists and exposes port 80.
 ## Step 26 — Verify Grafana logs
 
 Generate Voting App activity
+
 Access your Voting App using its existing Gateway URL  run the below command in server gitbash terminal
+
 ```bash
 kubectl get gateway -n voting
 ```
 
 copy the dns address check it in browser
+
 vote: http://dnsaddress
+
 result: http://dnsadress/result
+
 and cast a few test votes. This generates application traffic, although actual log output depends on whether the application logs those requests.
-Check logs in Grafana browser
+
+### Check logs in Grafana browser
+
 **Open Grafana-->connections-->Datasources-->Add new data source-->search loki-->**
+
 Connection:  URL: http://loki-gateway.logging.svc.cluster.local/
+
 Provide or select this url-->save and test
+
 **Open Grafana → Explore, select your existing Loki data source,select code and set the time range to Last 30 minutes.**
+
 Run:type:{namespace="voting"}  -->click on Run query
+
 To check individual services:
+
 ```bash
 {namespace="voting",container="vote"}
 ```
@@ -1748,15 +1849,21 @@ To check individual services:
 ```
 
 Click on Data Sources-->select loki-->Build a Dashboard
+
 Click on + symbol  -->Tile: loki_application_logs
+
 Description: Vote, Worker and Result application logs
+
 Select Configure Visulisation-->select All Visualizations(search logs)-->select Datasource : loki-->provide query as
+
 ```bash
 {namespace="voting"}
 ```
 
 -->Click on Run query-->save -->Provide Title: Voting App - Centralized Logging -->Save it
+
 Again Select Configure Visulisation-->select All Visualizations(search logs)-->select Datasource : loki-->provide query as
+
 ```bash
 {namespace="voting",container="result"}
 ```
@@ -1790,10 +1897,12 @@ aws s3 ls "s3://${LOKI_RULER_BUCKET}/" --recursive --summarize
 
 **Open aws console in browser-->open s3 -->observe buckets created -->on chunks bucket logs saved**
 
-## Appendix — Complete AWS Deletion Commands
+# Complete AWS Deletion Commands
 
 Project: final_voting_cicd Region: eu-north-1 Cluster: voting-cluster
+
 Run Steps 1–10 on voting-server. Run Step 11 on voting-runner. Complete the remaining steps from AWS CloudShell.
+
 **Warning: These commands permanently delete project infrastructure and data. Verify that each resource belongs to the Voting App before deleting it.**
 
 ## Step 1 — Verify AWS Account
@@ -2168,7 +2277,9 @@ aws ec2 describe-security-groups \
   --output table
 ```
 
-Review any remaining resources and delete only those verified as belonging to the Voting App. In particular, check for leftover EBS volumes, Elastic IPs and the project EC2 security group.
+Review any remaining resources and delete only those verified as belonging to the Voting App. 
+
+In particular, check for leftover EBS volumes, Elastic IPs and the project EC2 security group.
 
 ## Step 15 — Final Verification
 
