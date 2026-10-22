@@ -2,19 +2,57 @@ prometheus:
   prometheusSpec:
     retention: 2d
     replicas: 1
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 300Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorNamespaceSelector: {}
-    resources:
-      requests: {cpu: 100m, memory: 350Mi}
-      limits: {memory: 1Gi}
+
 grafana:
   enabled: true
+
+  persistence:
+    enabled: false
+
   resources:
-    requests: {cpu: 100m, memory: 128Mi}
-    limits: {memory: 512Mi}
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
 alertmanager:
   enabled: true
+
   alertmanagerSpec:
+    replicas: 1
+
     resources:
-      requests: {cpu: 50m, memory: 100Mi}
-      limits: {memory: 256Mi}
+      requests:
+        cpu: 50m
+        memory: 100Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 100Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
