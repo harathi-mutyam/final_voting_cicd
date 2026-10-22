@@ -1,17 +1,11 @@
 # Voting App — Complete CI/CD, EKS, Monitoring and Cleanup Guide
 
-> **Source:** Reformatted from the supplied deployment notes. Commands and configurations are retained as written; verify versions, access rules and placeholders before execution.
 
-## Architecture Diagram
-
-The following image is displayed automatically on GitHub when `architecture.excalidraw.png` is stored alongside `README.md`:
-
-![Voting App CI/CD architecture](./architecture.excalidraw.png)
-
-<!-- For any additional screenshots stored in images/, use:
-![Screenshot description](./images/actual-filename.png)
-Replace actual-filename.png with a real image filename before enabling the tag.
--->
+<p align="center">
+  <img src="./Voting App CI_CD and EKS Workflow.png"
+       alt="Voting App CI/CD architecture"
+       width="900" />
+</p>
 
 ## Step 1 — Create a Security Group
 security group name: **githubaction_sg**
