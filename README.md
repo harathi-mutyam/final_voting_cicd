@@ -1273,6 +1273,12 @@ Look for the dashboard:
 
 You should be able to inspect CPU and memory usage for the Voting App Pods.
 
+<p align="center">
+  <img src="./images/3.png"
+       alt="cicd workflow success"
+       width="900" />
+</p>
+
 ## Step 17 — Verify Alertmanager
 
 **open voting-server EC2 gitbash terminal**
