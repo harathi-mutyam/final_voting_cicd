@@ -1033,7 +1033,11 @@ kubectl get pvc -n voting
 ```bash
 kubectl get gateway,httproute -n voting
 ```
-
+<p align="center">
+  <img src="./images/2.png"
+       alt="gate way dns"
+       width="90" />
+</p>
 ```bash
 kubectl get httproute -n voting
 ```
