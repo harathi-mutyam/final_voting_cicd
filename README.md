@@ -14,9 +14,12 @@ Replace actual-filename.png with a real image filename before enabling the tag.
 -->
 
 ## Step 1 — Create a Security Group
-security group name: githubaction_sg
+security group name: **githubaction_sg**
+
 Inbound Security Group Rules
+
 The following six inbound rules are configured in AWS.
+
 | No. | Type | Protocol | Port Range | Source / CIDR | Purpose |
 | --- | --- | --- | --- | --- | --- |
 | 1 | SMTPS | TCP | 465 | 0.0.0.0/0 | Secure SMTP traffic |
@@ -29,7 +32,9 @@ The following six inbound rules are configured in AWS.
 ## Step 2 — Create Two Ec2 insatnces
 
 Operating system: Ubuntu 24.04
+
 AWS Region: eu-north-1
+
 | Configuration | voting-runner | voting-server |
 | --- | --- | --- |
 | Instance type | m7i-flex.large | t3.small |
@@ -42,6 +47,7 @@ AWS Region: eu-north-1
 ## Step 3 — Installation Part in Runner
 
 Connect to voting-runner open gitbash terminal
+
 ```bash
 ssh -i ~/Downloads/voting_key.pem ubuntu@<RUNNER_PUBLIC_IP>
 sudo hostnamectl set-hostname voting-runner
@@ -49,17 +55,20 @@ exec bash
 ```
 
 Update and install prerequisites:
+
 ```bash
 sudo apt update
 sudo apt upgrade -y
 sudo apt install -y \
   git curl wget unzip jq gnupg \
   ca-certificates python3 python3-pip python3-venv
+
 git --version
 python3 --version
 ```
 
 If your runner uses Python 3.12, install the version-specific package as well:
+
 ```bash
 sudo apt install -y python3.12-venv
 ```
@@ -89,7 +98,7 @@ deactivate
 rm -rf /tmp/voting-venv-test
 ```
 
-Install Docker on Runner EC2
+#### Install Docker on Runner EC2
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
 ```
@@ -144,7 +153,7 @@ docker ps
 docker run --rm hello-world
 ```
 
-Configure SonarQube requirements
+#### Configure SonarQube requirements
 **WHERE: RUNNER EC2**
 ```bash
 echo "vm.max_map_count=524288" | sudo tee /etc/sysctl.d/99-sonarqube.conf
@@ -164,9 +173,11 @@ sysctl vm.max_map_count
 sysctl fs.file-max
 ```
 
-Install SonarQube on the same Runner EC2
+#### Install SonarQube on the same Runner EC2
 In  RUNNER EC2 gitbash terminal
+
 Create persistent Docker volumes:
+
 ```bash
 docker volume create sonarqube_data
 docker volume create sonarqube_extensions
@@ -174,6 +185,7 @@ docker volume create sonarqube_logs
 ```
 
 Start SonarQube:
+
 ```bash
 docker run -d \
   --name sonarqube \
@@ -186,6 +198,7 @@ docker run -d \
 ```
 
 Check the container:
+
 ```bash
 docker ps
 ```
@@ -202,14 +215,16 @@ Expected response contains:
 
 **Open SonarQube in your Windows browser:**
 http://<RUNNER_PUBLIC_IP>:9000
+
 Complete the initial login with username: admin password: admin and password-change to admin123 process.
+
 Clone the updated Voting App repository
 ```bash
 git clone https://github.com/harathi-mutyam/final_voting_cicd.git
 cd final_voting_cicd
 ```
 
-Install Python for vote
+#### Install Python for vote
 ```bash
 cd ~/final_voting_cicd
 python3 -m venv .venv-vote
@@ -229,7 +244,7 @@ python -m compileall -q vote
 deactivate
 ```
 
-Install Node.js for Result
+#### Install Node.js for Result
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x \
   | sudo -E bash -
@@ -244,8 +259,10 @@ node --version
 npm –version
 ```
 
-Install .NET 7 SDK for worker purpose
+#### Install .NET 7 SDK for worker purpose
+
 Download Microsoft's .NET installer for worker node
+
 ```bash
 cd ~
 curl -fSL \
@@ -253,7 +270,7 @@ curl -fSL \
   -o dotnet-install.sh
 ```
 
-Install .NET 7 SDK
+**Install .NET 7 SDK**
 ```bash
 bash dotnet-install.sh \
   --version 7.0.410 \
@@ -261,8 +278,10 @@ bash dotnet-install.sh \
 ```
 
 This installs the .NET 7 SDK in /home/ubuntu/.dotnet without changing system-managed packages.
+
 The archived SDK download must still be available for this command to succeed.
-Configure environment variables
+
+#### Configure environment variables
 ```bash
 cat >> ~/.bashrc <<'EOF'
 ```
@@ -279,7 +298,7 @@ Reload the shell:
 source ~/.bashrc
 ```
 
-Verify installation
+#### Verify installation
 ```bash
 dotnet --version
 dotnet --list-sdks
@@ -287,8 +306,11 @@ dotnet --list-runtimes
 ```
 
 Expected SDK version:7.0.410
-Install Trivy
+
+### Install Trivy
+
 Trivy scans Docker images for known vulnerabilities.
+
 ```bash
 sudo apt install -y wget gnupg
 ```
@@ -333,8 +355,10 @@ git --version
 curl --version
 ```
 
-Install AWS CLI in server gitbash terminal
+### Install AWS CLI in server gitbash terminal
+
 On the voting-server EC2:
+
 ```bash
 cd /tmp
 ```
@@ -358,13 +382,15 @@ aws --version
 aws configure
 ```
 
-provide access key ,secret key,region : eu-north-1 ,json
+**provide access key ,secret key,region : eu-north-1 ,json**
 ```bash
 cd ..
 ```
 
-Install Terraform in server gitbash terminal
+### Install Terraform in server gitbash terminal
+
 Add HashiCorp's package repository:
+
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg \
   | sudo gpg --dearmor \
@@ -380,7 +406,7 @@ sudo apt install terraform -y
 terraform version
 ```
 
-Install kubectl in server gitbash terminal
+### Install kubectl in server gitbash terminal
 ```bash
 cd /tmp
 ```
@@ -416,7 +442,7 @@ kubectl version --client
 ```
 
 For an existing EKS cluster, the kubectl client should be within one minor version of the Kubernetes API server. We will verify that before deploying.
-Install Helm
+#### Install Helm
 ```bash
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
   | bash
@@ -428,7 +454,8 @@ helm version
 ```
 
 Helm will be used to install Argo CD, Prometheus, Grafana, Loki, Alloy and the AWS Load Balancer Controller.
-Clone the project:
+
+**Clone the project:**
 ```bash
 cd ~
 git clone https://github.com/harathi-mutyam/final_voting_cicd.git
@@ -437,14 +464,20 @@ git clone https://github.com/harathi-mutyam/final_voting_cicd.git
 ## Step 5 — Register your self-hosted GitHub Actions runner
 
 **WHERE: voting-runner EC2**
+
 **Open in browser:**
+
 GitHub → final_voting_cicd → Actions Runners
+
 Select New self-hosted runner → Linux → x64.
+
 Copy the installation commands displayed by GitHub Download and Configure related commands upto ./config.sh command . During registration, use:
+
 Setting	Value
+
 Enter the name of the runner group
-Runner name	Press Enter key
-voting-runner
+
+Runner name	Press Enter key voting-runner
 | Additional label | voting-runner |
 | --- | --- |
 | Work directory _work |  press Enter key |
