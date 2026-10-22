@@ -476,11 +476,11 @@ Copy the installation commands displayed by GitHub Download and Configure relate
 Setting	Value
 
 | Enter the name of the runner group | press Enter key |
-
+| --- | --- |
 | Runner name	| Press  voting-runner |
-
+| --- | --- |
 | Additional label | voting-runner |
-
+| --- | --- |
 | Work directory _work |  press Enter key |
 
 
