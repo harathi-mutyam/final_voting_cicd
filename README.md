@@ -599,12 +599,15 @@ Edit terraform.tfvars
 cd ~/final_voting_cicd/terraform
 ```
 
-vim variables.tf
+vim terraform.tfvars
+
 Update:
+```bash
 aws_region         = "eu-north-1"
 cluster_name       = "voting-cluster"
 kubernetes_version = "1.34"
 node_instance_type , node_desired_size, node_min_size, node_max_size according to  your requirement
+```
 Push changes from EC2 to Github repository
 ```bash
 cd ~/final_voting_cicd
