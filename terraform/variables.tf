@@ -27,7 +27,7 @@ variable "admin_cidr" {
 
 variable "node_instance_type" {
   type    = string
-  default = "m7i-flex.large"
+  default = "c7i-flex.large"
 }
 
 variable "node_desired_size" {
@@ -37,10 +37,10 @@ variable "node_desired_size" {
 
 variable "node_min_size" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "node_max_size" {
   type    = number
-  default = 3
+  default = 2
 }
