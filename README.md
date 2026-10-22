@@ -518,26 +518,28 @@ Confirm that your three Docker Hub repositories exist:
 | • | harathi2026/voting-result |
 | • | harathi2026/voting-worker |
 
-Yellow colo highlighted content here optional only for verification
+Yellow color highlighted content here optional only for verification 
+
 They can be public for this demo so that EKS can pull images without an image-pull secret.
+
 **Optional:**
 ```bash
 cd ~/final_voting_cicd
 docker login -u harathi2026
-```
+
 
 Pull all three images
-```bash
+
 docker images  #if you are get all images then pull it using below commands
 docker pull harathi2026/voting-vote:latest
 docker pull harathi2026/voting-result:latest
-```
 
-```bash
+
+
 docker pull harathi2026/voting-worker:latest
-```
 
-```bash
+
+
 docker images
 ```
 
@@ -547,52 +549,53 @@ cd ~/final_voting_cicd
 docker login -u harathi2026
 docker login -u harathi2026
 # Vote – Python
-```
 
-```bash
+
+
 docker build -t harathi2026/voting-vote:latest ./vote
-```
 
-```bash
+
+
 # Result - Node.js
-```
 
-```bash
+
+
 docker build -t harathi2026/voting-result:latest ./result
-```
 
-```bash
+
+
 # Worker - .NET
-```
 
-```bash
+
+
 docker build -t harathi2026/voting-worker:latest ./worker
-```
 
-```bash
+
+
 docker images
 trivy image --exit-code 0 --severity HIGH,CRITICAL --ignore-unfixed harathi2026/voting-vote:latest
-```
 
-```bash
+
+
 trivy image --exit-code 0 --severity HIGH,CRITICAL --ignore-unfixed harathi2026/voting-result:latest
-```
 
-```bash
+
+
 trivy image --exit-code 0 --severity HIGH,CRITICAL --ignore-unfixed harathi2026/voting-worker:latest
-```
 
-Push all three images to Docker Hub
-```bash
+
+# Push all three images to Docker Hub
+
 docker push harathi2026/voting-vote:latest
-```
 
-```bash
+
+
 docker push harathi2026/voting-result:latest
-```
 
-```bash
+
+
 docker push harathi2026/voting-worker:latest
+
 ```
 
 ## Step 7 — Complete ci.yml with Trivy and GitOps
