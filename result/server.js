@@ -21,33 +21,60 @@ if (!dbPassword) {
   process.exit(1);
 }
 
-// Redis client for latest-vote demo mode
+// ----------------------------------------------------
+// Redis connection
+// ----------------------------------------------------
+
 const redisClient = createClient({
   url: `redis://${redisHost}:6379`
 });
 
 redisClient.on('error', function (err) {
-  console.error('Redis connection error:', err.message);
+  console.error('[RESULT] Redis connection error:', err.message);
 });
 
 redisClient.connect()
   .then(function () {
-    console.log('Connected to Redis');
+    console.log('[RESULT] Connected to Redis');
   })
   .catch(function (err) {
-    console.error('Unable to connect to Redis:', err.message);
+    console.error('[RESULT] Unable to connect to Redis:', err.message);
   });
 
-// Socket.IO
+// ----------------------------------------------------
+// Socket.IO - Client activity logging
+// ----------------------------------------------------
+
 io.on('connection', function (socket) {
+
+  console.log('[RESULT] Client connected:', socket.id);
+
   socket.emit('message', { text: 'Welcome!' });
 
   socket.on('subscribe', function (data) {
     socket.join(data.channel);
+
+    console.log(
+      '[RESULT] Client subscribed to:',
+      data.channel
+    );
   });
+
+  socket.on('disconnect', function (reason) {
+    console.log(
+      '[RESULT] Client disconnected:',
+      socket.id,
+      'Reason:',
+      reason
+    );
+  });
+
 });
 
+// ----------------------------------------------------
 // PostgreSQL connection
+// ----------------------------------------------------
+
 var pool = new Pool({
   host: dbHost,
   port: 5432,
@@ -61,8 +88,9 @@ async.retry(
 
   function (callback) {
     pool.connect(function (err, client, done) {
+
       if (err) {
-        console.error('Waiting for db:', err.message);
+        console.error('[RESULT] Waiting for db:', err.message);
         return callback(err);
       }
 
@@ -72,19 +100,30 @@ async.retry(
   },
 
   function (err) {
+
     if (err) {
-      console.error('Giving up');
+      console.error('[RESULT] Giving up connecting to db');
       return;
     }
 
-    console.log('Connected to db');
+    console.log('[RESULT] Connected to db');
+
     getVotes();
   }
 );
 
+// ----------------------------------------------------
+// Voting results
 // Demo mode: display only the latest processed vote
+// ----------------------------------------------------
+
+// Remember previous vote to avoid logging every second
+let previousVote;
+
 async function getVotes() {
+
   try {
+
     if (!redisClient.isReady) {
       throw new Error('Redis client is not ready');
     }
@@ -96,23 +135,66 @@ async function getVotes() {
       b: latestVote === 'b' ? 1 : 0
     };
 
+    // Log only when the latest vote changes
+    if (latestVote !== previousVote) {
+
+      console.log(
+        '[RESULT] Latest vote updated:',
+        latestVote
+      );
+
+      previousVote = latestVote;
+    }
+
+    // Send voting results to connected clients
     io.sockets.emit('scores', JSON.stringify(votes));
 
   } catch (err) {
-    console.error('Error retrieving latest demo vote:', err.message);
+
+    console.error(
+      '[RESULT] Error retrieving latest demo vote:',
+      err.message
+    );
+
   } finally {
+
+    // Continue checking Redis every second
     setTimeout(getVotes, 1000);
   }
 }
 
+// ----------------------------------------------------
+// Express middleware
+// ----------------------------------------------------
+
 app.use(cookieParser());
+
 app.use(express.urlencoded({ extended: true }));
+
 app.use(express.static(__dirname + '/views'));
 
+// ----------------------------------------------------
+// Result application route
+// ----------------------------------------------------
+
 app.get('/', function (req, res) {
-  res.sendFile(path.resolve(__dirname + '/views/index.html'));
+
+  res.sendFile(
+    path.resolve(__dirname + '/views/index.html')
+  );
+
 });
 
+// ----------------------------------------------------
+// Start Result application
+// ----------------------------------------------------
+
 server.listen(port, function () {
-  console.log('App running on port ' + server.address().port);
+
+  console.log(
+    '[RESULT] App running on port ' +
+    server.address().port
+  );
+
 });
+
