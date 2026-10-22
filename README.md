@@ -613,11 +613,7 @@ git push origin main
 
 **open your project github in browser-->actions-->runner-->observe workflow is running.If not running Select your workflow and use Run workflow if workflow_dispatch is enabled.**
 
-<p align="center">
-  <img src="./images/1.png"
-       alt="cicd workflow success"
-       width="900" />
-</p>
+
 
 ## Step 8 — Infrastructure creation
 
@@ -1012,7 +1008,11 @@ kubectl apply -f argocd/voting-app.yaml -n argocd
 
 Verify Application
 **open Argocd in browser and refresh it.**
-
+<p align="center">
+  <img src="./images/1.png"
+       alt="cicd workflow success"
+       width="900" />
+</p>
 In server gitbash terminal
 ```bash
 kubectl get application voting-app -n argocd
