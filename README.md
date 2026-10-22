@@ -505,10 +505,12 @@ The CI/CD workflow will use: runs-on: [self-hosted, linux, x64, voting-runner]
 | Secret | SONAR_TOKEN | SonarQube project analysis token |
 
 localhost:9000 is appropriate for a SonarScanner process running directly on your runner EC2, because SonarQube is on the same machine. If the scanner executes inside a separate container, use an address reachable from that container.
-Steps for creation of DockerHub Personal Access Token (PAT) write-access-token
-**Open Docker Hub Sign in using Docker Hub Account login credentials  click on Profile icon in the upper right corner open Account settingsselect Personal Access Tokens Generate new Token Enter Project name and Discription as voting-app-github-actions  choose Read & Write Permissions (So github Actions can push Docker images) expiration period : 30  generate  Copy the token immediately and store it securely**
+
+### Steps for creation of DockerHub Personal Access Token (PAT) write-access-token
+
+Open Docker Hub-->Sign in using Docker Hub Account login credentials -->click on Profile icon in the upper right corner-->open Account settingsselect Personal Access Tokens-->Generate new Token-->Enter Project name and Discription as voting-app-github-actions -->choose Read & Write Permissions (So github Actions can push Docker images)-->expiration period : 30 -->generate -->Copy the token immediately and store it securely**
 Steps for creation of SonarQube Personal Access Token
-Select manuallyProvide project name and key as voting-app-cicd click on generate Tokenprovide name as voting-app-cicd_token  save or copy the token value Place it in a safe place
+Select manuallyProvide project name and key as voting-app-cicd-->click on generate Tokenprovide name as voting-app-cicd_token -->save or copy the token value Place it in a safe place
 
 Confirm that your three Docker Hub repositories exist:
 | • | harathi2026/voting-vote |
@@ -606,7 +608,7 @@ git commit -m "Add Voting App CI CD with Trivy and GitOps"
 git push origin main
 ```
 
-**open your project github in browser actionsrunner observe workflow is running.If not running Select your workflow and use Run workflow if workflow_dispatch is enabled.**
+**open your project github in browser-->actionsrunner-->observe workflow is running.If not running Select your workflow and use Run workflow if workflow_dispatch is enabled.**
 
 ## Step 8 — Infrastructure creation
 
@@ -1224,10 +1226,10 @@ kubectl get secret monitoring-grafana \
 Echo
 Copy the password paste it in browser
 After login into Grafana Verify Prometheus data source
-**Open Connections → Data sourcesSelect the existing Prometheus data sourceVerify that the URL points to your monitoring Prometheus service  Click Save & test. Or Test  click Test again**
+**Open Connections → Data sourcesSelect the existing Prometheus data sourceVerify that the URL points to your monitoring Prometheus service -->Click Save & test. Or Test -->click Test again**
 Expected result: The Prometheus data source is working.
 Test metrics
-**Open Explore, select Prometheus  select code(on Right side) type: up run symbol (refresh Symbol on Top with blue colour):**
+**Open Explore, select Prometheus -->select code(on Right side) type: up-->run symbol (refresh Symbol on Top with blue colour):**
 A value of 1 indicates that Prometheus successfully scraped that target.
 Next, check your Voting App Pods:
 kube_pod_status_phase{namespace="voting",phase="Running"}
@@ -1612,7 +1614,7 @@ aws s3 ls "s3://${LOKI_RULER_BUCKET}/" --recursive
 The ruler bucket may remain empty until you configure Loki recording or alerting rules.
 Confirm log ingestion in Grafana
 **Open Grafana and navigate to:**
-Explore → Loki datasource select code
+Explore → Loki datasource-->select code
 Run this LogQL query:
 ```bash
 {namespace="voting"}
@@ -1728,7 +1730,7 @@ Check logs in Grafana browser
 Connection:  URL: http://loki-gateway.logging.svc.cluster.local/
 Provide or select this urlsave and test
 **Open Grafana → Explore, select your existing Loki data source,select code and set the time range to Last 30 minutes.**
-Run:type:{namespace="voting"}   click on Run query
+Run:type:{namespace="voting"}  -->click on Run query
 To check individual services:
 ```bash
 {namespace="voting",container="vote"}
@@ -1743,15 +1745,15 @@ To check individual services:
 ```
 
 Click on Data Sourcesselect lokiBuild a Dashboard
-Click on + symbol   Tile: loki_application_logs
+Click on + symbol  -->Tile: loki_application_logs
 Description: Vote, Worker and Result application logs
-Select Configure Visulisationselect All Visualizations(search logs)select Datasource : loki provide query as
+Select Configure Visulisationselect All Visualizations(search logs)select Datasource : loki-->provide query as
 ```bash
 {namespace="voting"}
 ```
 
 Click on Run querysave Provide Title: Voting App - Centralized Logging Save it
-Again Select Configure Visulisationselect All Visualizations(search logs)select Datasource : loki provide query as
+Again Select Configure Visulisationselect All Visualizations(search logs)select Datasource : loki-->provide query as
 ```bash
 {namespace="voting",container="result"}
 ```
@@ -1783,7 +1785,7 @@ aws s3 ls "s3://${LOKI_CHUNKS_BUCKET}/" --recursive --summarize
 aws s3 ls "s3://${LOKI_RULER_BUCKET}/" --recursive --summarize
 ```
 
-**Open aws console in browseropen s3  observe buckets created  on chunks bucket logs saved**
+**Open aws console in browseropen s3 -->observe buckets created -->on chunks bucket logs saved**
 
 ## Appendix — Complete AWS Deletion Commands
 
