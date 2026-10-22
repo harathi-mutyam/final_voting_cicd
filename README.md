@@ -1036,7 +1036,7 @@ kubectl get gateway,httproute -n voting
 <p align="center">
   <img src="./images/2.png"
        alt="gate way dns"
-       width="90" />
+       width="900" />
 </p>
 ```bash
 kubectl get httproute -n voting
