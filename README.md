@@ -2,7 +2,7 @@
 
 
 <p align="center">
-  <img src="./Voting App CI_CD and EKS Workflow.png"
+  <img src="./images/Voting App CI_CD and EKS Workflow.png"
        alt="Voting App CI/CD architecture"
        width="900" />
 </p>
