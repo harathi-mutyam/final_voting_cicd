@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: vote
-          image: harathi2026/voting-vote:22e9fc8fd20e
+          image: harathi2026/voting-vote:c89af3717a74
           ports: [{containerPort: 80}]
           env:
             - {name: REDIS_HOST, value: redis}
