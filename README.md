@@ -1903,303 +1903,266 @@ aws s3 ls "s3://${LOKI_RULER_BUCKET}/" --recursive --summarize
 **Open aws console in browser-->open s3 -->observe buckets created -->on chunks bucket logs saved**
 
 # Complete AWS Deletion Commands
+## 🗑️ Complete Voting App Deletion Procedure
 
-Project: final_voting_cicd Region: eu-north-1 Cluster: voting-cluster
+### Step 1 — Connect to `voting-server` and verify resources
 
-Run Steps 1–10 on voting-server. Run Step 11 on voting-runner. Complete the remaining steps from AWS CloudShell.
-
-**Warning: These commands permanently delete project infrastructure and data. Verify that each resource belongs to the Voting App before deleting it.**
-
-## Step 1 — Verify AWS Account
+**Run on:** `voting-server`
 
 ```bash
 aws sts get-caller-identity
-```
-
-```bash
 aws eks list-clusters --region eu-north-1
+kubectl get ns
+helm list -A
 ```
 
-## Step 2 — Delete Argo CD Application
+### Step 2 — Delete the Voting App and Argo CD application
+
+**Run on:** `voting-server`
+
+Disable automated synchronization before removing the application:
 
 ```bash
 kubectl -n argocd patch application voting-app \
   --type merge \
   -p '{"spec":{"syncPolicy":{"automated":null}}}'
+```
+
+Ensure Argo CD cascades deletion to managed application resources:
+
+```bash
 kubectl -n argocd patch application voting-app \
   --type merge \
   -p '{"metadata":{"finalizers":["resources-finalizer.argocd.argoproj.io"]}}'
-kubectl delete application voting-app \
-  -n argocd \
-  --wait=true \
-  --timeout=300s
-kubectl get applications -n argocd
+
+kubectl delete application voting-app -n argocd \
+  --wait=true --timeout=300s
 ```
 
-## Step 3 — Delete Voting Application Namespace
-
-```bash
-kubectl get pvc -n voting
-```
+Delete the application namespace:
 
 ```bash
 kubectl delete namespace voting \
-  --wait=true \
-  --timeout=600s
+  --wait=true --timeout=600s
 ```
 
+> [!WARNING]
+> Cascading deletion removes resources managed by this Argo CD application. Verify the application does not manage shared resources.
+
+### Step 3 — Delete Loki and Alloy
+
+**Run on:** `voting-server`
+
 ```bash
-kubectl get pv
-```
-
-Ensure application PVCs and PVs are removed before proceeding.
-
-## Step 4 — Delete Loki and Alloy
-
-```bash
-helm list -n logging
 helm uninstall alloy -n logging
-```
-
-```bash
 helm uninstall loki -n logging
 kubectl get pvc -n logging
 ```
 
-If storage-loki-0 remains:
-```bash
-kubectl delete pvc storage-loki-0 \
-  -n logging \
-  --wait=false
-```
-
-Verify storage deletion:
-```bash
-kubectl get pvc -n logging
-```
+If the Loki PVC exists **and belongs to this project**, remove it:
 
 ```bash
-kubectl get pv
+kubectl delete pvc storage-loki-0 -n logging
 ```
 
-When Loki storage is removed:
+Remove the logging namespace:
+
 ```bash
 kubectl delete namespace logging \
-  --wait=true \
-  --timeout=600s
+  --wait=true --timeout=600s
 ```
 
-## Step 5 — Delete Prometheus, Grafana and Alertmanager
+> [!NOTE]
+> The PVC command is conditional. A filesystem-based Loki installation without persistence may not have a PVC.
 
-```bash
-helm list -n monitoring
-```
+### Step 4 — Delete Prometheus, Grafana, and Alertmanager
+
+**Run on:** `voting-server`
 
 ```bash
 helm uninstall monitoring -n monitoring
 kubectl get pvc -n monitoring
 ```
 
+Only if **all remaining PVCs are project-owned**:
+
 ```bash
-kubectl get pv
+kubectl delete pvc --all -n monitoring \
+  --wait=true --timeout=600s
 ```
 
-If monitoring PVCs remain, verify their ownership and delete them:
+Then remove the namespace:
+
 ```bash
-kubectl delete pvc --all \
-  -n monitoring \
-  --wait=true \
-  --timeout=600s
 kubectl delete namespace monitoring \
-  --wait=true \
-  --timeout=600s
+  --wait=true --timeout=600s
 ```
 
-## Step 6 — Delete NGINX Gateway Fabric
+> [!CAUTION]
+> Deleting monitoring PVCs permanently destroys locally stored metrics and other persisted monitoring data.
 
-First remove any remaining Gateway API resources belonging to the Voting App and confirm that their load balancers are being released.
+### Step 5 — Delete NGINX Gateway Fabric
+
+**Run on:** `voting-server`
+
+Inspect remaining gateways and load-balancer services:
+
 ```bash
 kubectl get gateway -A
-```
-
-```bash
 kubectl get svc -A
 ```
 
-Then uninstall the controller:
+After confirming that the release and namespace are project-owned:
+
 ```bash
 helm uninstall ngf -n nginx-gateway
 kubectl delete namespace nginx-gateway \
-  --wait=true \
-  --timeout=600s
+  --wait=true --timeout=600s
 ```
 
-Verify AWS Load Balancers:
-```bash
-aws elbv2 describe-load-balancers \
-  --region eu-north-1 \
-  --query 'LoadBalancers[].LoadBalancerName' \
-  --output table
-```
+> [!IMPORTANT]
+> Confirm AWS load balancers created by the gateway have been cleaned up before destroying the VPC.
 
-Do not proceed while a project load balancer remains.
+### Step 6 — Delete Argo CD namespace
 
-## Step 7 — Delete Argo CD
+**Run on:** `voting-server`
 
 ```bash
 kubectl get applications -n argocd
 ```
 
-After confirming no applications remain:
+If no other applications depend on this installation:
+
 ```bash
 kubectl delete namespace argocd \
-  --wait=true \
-  --timeout=600s
-kubectl get pods -A
+  --wait=true --timeout=600s
 ```
 
-## Step 8 — Delete Loki CloudFormation Stack
+### Step 7 — Delete Loki AWS IAM resources
+
+**Run on:** `voting-server`
 
 ```bash
+export AWS_REGION=eu-north-1
+export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
 STACK="eksctl-voting-cluster-addon-iamserviceaccount-logging-loki"
+
+aws cloudformation describe-stacks \
+  --stack-name "$STACK" \
+  --region "$AWS_REGION"
+```
+
+**Only if the stack exists and is dedicated to Loki:**
+
+```bash
 aws cloudformation update-termination-protection \
   --stack-name "$STACK" \
   --no-enable-termination-protection \
-  --region eu-north-1
+  --region "$AWS_REGION"
+
 aws cloudformation delete-stack \
   --stack-name "$STACK" \
-  --region eu-north-1
+  --region "$AWS_REGION"
+
 aws cloudformation wait stack-delete-complete \
   --stack-name "$STACK" \
-  --region eu-north-1
+  --region "$AWS_REGION"
 ```
 
-Skip this step if the stack was already deleted.
-
-## Step 9 — Delete Remaining Loki IAM Policy
-
-```bash
-ACCOUNT_ID=$(aws sts get-caller-identity \
-  --query Account --output text)
-```
+Check the IAM policy:
 
 ```bash
 POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/VotingLokiS3Policy"
-aws iam get-role \
-  --role-name VotingLokiS3Role
-```
 
-```bash
-aws iam get-policy \
-  --policy-arn "$POLICY_ARN"
-```
-
-If the policy still exists:
-```bash
 aws iam list-entities-for-policy \
   --policy-arn "$POLICY_ARN"
 ```
 
-If no entities are attached and the policy belongs only to this project:
+If the policy exists, has **no attachments**, and is not used elsewhere:
+
 ```bash
-aws iam delete-policy \
-  --policy-arn "$POLICY_ARN"
+aws iam delete-policy --policy-arn "$POLICY_ARN"
 ```
 
-If the role still exists, inspect and remove its remaining attachments and dependencies before deleting it.
+> [!WARNING]
+> IAM policy deletion can also require removing nondefault policy versions. Do not delete a policy or role that is shared by another workload.
 
-## Step 10 — Terraform Destroy
+### Step 8 — Destroy EKS and Terraform-managed infrastructure
+
+**Run on:** `voting-server`
 
 ```bash
 cd ~/final_voting_cicd/terraform
-terraform init
-```
 
-```bash
+terraform init
 terraform state list
 terraform plan -destroy -out=destroy.tfplan
-```
-
-Review the destruction plan:
-```bash
 terraform show destroy.tfplan
 ```
 
-After verifying that only Voting App infrastructure will be deleted:
+> [!CAUTION]
+> **STOP AND REVIEW.** The plan must contain only resources you intend to delete. An empty Terraform state does **not** prove that AWS has no leftover resources; check the AWS console and CLI separately. If the plan includes shared resources, do not proceed.
+
+When the plan is correct:
+
 ```bash
 terraform apply destroy.tfplan
 ```
 
-**Verify:**
+Verify:
+
 ```bash
+aws eks list-clusters --region eu-north-1
 terraform state list
-aws eks list-clusters \
-  --region eu-north-1
 ```
 
-**Expected: No managed Terraform resources and no voting-cluster.**
+> [!NOTE]
+> If `voting-cluster` no longer appears and the Terraform state is empty, the Terraform-managed deletion has likely completed. Continue with the remaining AWS checks.
 
-## Step 11 — Remove GitHub Actions Runner
+### Step 9 — Remove the GitHub Actions self-hosted runner
 
-**WHERE: voting-runner EC2 terminal**
+**Run on:** `voting-runner`
+
 ```bash
 cd ~/actions-runner
-```
 
-If the runner was installed as a service:
-```bash
 sudo ./svc.sh stop
-```
-
-```bash
 sudo ./svc.sh uninstall
-```
-
-Remove GitHub registration:
-```bash
 ./config.sh remove
 ```
 
-Provide a GitHub runner removal token if requested.
+Provide a GitHub runner removal token if prompted. Verify the runner is removed from the repository's **Settings → Actions → Runners** page.
 
-## Step 12 — Delete Loki S3 Buckets
+## Step 10 — Delete Loki S3 buckets
 
-**WHERE: AWS CloudShell**
-```bash
-ACCOUNT_ID=$(aws sts get-caller-identity \
-  --query Account --output text)
-```
+**Run in:** AWS CloudShell
 
 ```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
 CHUNKS_BUCKET="voting-loki-chunks-${ACCOUNT_ID}-eu-north-1"
-```
-
-```bash
 RULER_BUCKET="voting-loki-ruler-${ACCOUNT_ID}-eu-north-1"
-```
 
-Verify bucket names:
-```bash
 aws s3api list-buckets \
   --query 'Buckets[].Name' \
   --output table
 ```
 
-After confirming both buckets belong to this project and their logs are no longer required, delete them:
-```bash
-aws s3 rb "s3://${CHUNKS_BUCKET}" --force
-```
+> [!CAUTION]
+> Confirm both bucket names, ownership, and that logs are no longer required. Bucket deletion is irreversible. The commands below are suitable for ordinary unversioned buckets; versioned buckets require deleting versions and delete markers separately.
 
 ```bash
+aws s3 rb "s3://${CHUNKS_BUCKET}" --force
 aws s3 rb "s3://${RULER_BUCKET}" --force
 ```
 
-These commands work for ordinary unversioned buckets. Versioned buckets require removal of all object versions and delete markers first.
+### Step 11 — Terminate the two EC2 instances
 
-## Step 13 — Terminate EC2 Instances
+**Run in:** AWS CloudShell
 
-**WHERE: AWS CloudShell**
-Identify the project instances:
+Identify the instances:
+
 ```bash
 aws ec2 describe-instances \
   --region eu-north-1 \
@@ -2208,89 +2171,32 @@ aws ec2 describe-instances \
   --output table
 ```
 
-After confirming the exact instance IDs, terminate them:
+After verifying the IDs:
+
 ```bash
 aws ec2 terminate-instances \
   --region eu-north-1 \
-  --instance-ids <VOTING_RUNNER_INSTANCE_ID> <VOTING_SERVER_INSTANCE_ID>
+  --instance-ids <RUNNER_INSTANCE_ID> <SERVER_INSTANCE_ID>
 ```
 
-Replace the placeholders with verified instance IDs.
+> [!WARNING]
+> Replace the placeholders with actual instance IDs. Terminate **only** the verified project instances. The EC2 instance termination command must run after all commands needed on those instances.
 
-## Step 14 — Check Remaining AWS Resources
+### Step 12 — Final AWS cleanup verification
 
-EKS:
-```bash
-aws eks list-clusters \
-  --region eu-north-1
-```
-
-EC2:
-```bash
-aws ec2 describe-instances \
-  --region eu-north-1 \
-  --filters "Name=instance-state-name,Values=pending,running,stopped,stopping" \
-  --query 'Reservations[].Instances[].InstanceId' \
-  --output table
-```
-
-EBS volumes:
-```bash
-aws ec2 describe-volumes \
-  --region eu-north-1 \
-  --query 'Volumes[].{ID:VolumeId,State:State,Size:Size}' \
-  --output table
-```
-
-Load Balancers:
-```bash
-aws elbv2 describe-load-balancers \
-  --region eu-north-1 \
-  --query 'LoadBalancers[].LoadBalancerName' \
-  --output table
-```
-
-NAT Gateways:
-```bash
-aws ec2 describe-nat-gateways \
-  --region eu-north-1 \
-  --query 'NatGateways[].{ID:NatGatewayId,State:State}' \
-  --output table
-```
-
-Elastic IPs:
-```bash
-aws ec2 describe-addresses \
-  --region eu-north-1 \
-  --query 'Addresses[].{IP:PublicIp,AllocationId:AllocationId}' \
-  --output table
-```
-
-VPCs:
-```bash
-aws ec2 describe-vpcs \
-  --region eu-north-1 \
-  --query 'Vpcs[].{ID:VpcId,CIDR:CidrBlock}' \
-  --output table
-```
-
-Security Groups:
-```bash
-aws ec2 describe-security-groups \
-  --region eu-north-1 \
-  --query 'SecurityGroups[].{ID:GroupId,Name:GroupName}' \
-  --output table
-```
-
-Review any remaining resources and delete only those verified as belonging to the Voting App. 
-
-In particular, check for leftover EBS volumes, Elastic IPs and the project EC2 security group.
-
-## Step 15 — Final Verification
+**Run in:** AWS CloudShell
 
 ```bash
 aws eks list-clusters --region eu-north-1
+aws ec2 describe-volumes --region eu-north-1
+aws elbv2 describe-load-balancers --region eu-north-1
+aws ec2 describe-nat-gateways --region eu-north-1
+aws ec2 describe-addresses --region eu-north-1
+aws ec2 describe-vpcs --region eu-north-1
+aws ec2 describe-security-groups --region eu-north-1
 ```
+
+Check for project-related S3 buckets:
 
 ```bash
 aws s3api list-buckets \
@@ -2298,13 +2204,8 @@ aws s3api list-buckets \
   --output table
 ```
 
-```bash
-aws cloudformation list-stacks \
-  --region eu-north-1 \
-  --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE \
-  --query 'StackSummaries[?contains(StackName, `voting-cluster`)].StackName' \
-  --output table
-```
+> [!IMPORTANT]
+> These commands show **all resources visible in the account/region**, including default and unrelated resources. Do not delete them indiscriminately. Check ownership tags and dependencies for any leftover EBS volumes, load balancers, NAT gateways, Elastic IPs, VPCs, security groups, or buckets.
 
-Deletion is complete when all Voting App resources have been removed and verified.
-Your GitHub repository final_voting_cicd remains preserved for future deployments.
+
+
