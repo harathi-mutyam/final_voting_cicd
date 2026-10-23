@@ -2159,28 +2159,11 @@ aws s3 rb "s3://${RULER_BUCKET}" --force
 
 ### Step 11 — Terminate the two EC2 instances
 
-**Run in:** AWS CloudShell
+open Runner ec2 instance
+sudo ./svc.sh stop
+sudo ./svc.sh status
 
-Identify the instances:
-
-```bash
-aws ec2 describe-instances \
-  --region eu-north-1 \
-  --filters "Name=tag:Name,Values=voting-runner,voting-server" \
-  --query 'Reservations[].Instances[].{ID:InstanceId,Name:Tags[?Key==`Name`]|[0].Value,State:State.Name}' \
-  --output table
-```
-
-After verifying the IDs:
-
-```bash
-aws ec2 terminate-instances \
-  --region eu-north-1 \
-  --instance-ids <RUNNER_INSTANCE_ID> <SERVER_INSTANCE_ID>
-```
-
-> [!WARNING]
-> Replace the placeholders with actual instance IDs. Terminate **only** the verified project instances. The EC2 instance termination command must run after all commands needed on those instances.
+open aws console in browser-->terminate the ec2 instances
 
 ### Step 12 — Final AWS cleanup verification
 
