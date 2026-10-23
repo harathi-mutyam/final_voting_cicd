@@ -20,7 +20,7 @@ The following six inbound rules are configured in AWS.
 | 3 | HTTP | TCP | 80 | 0.0.0.0/0 | Public HTTP access |
 | 4 | HTTPS | TCP | 443 | 0.0.0.0/0 | Public HTTPS access |
 | 5 | SSH | TCP | 22 | My IP | Secure SSH access to EC2 |
-| 6 | Custom TCP | TCP | 587 | MyIP | SMTP submission traffic |
+
 
 ## Step 2 — Create Two Ec2 insatnces
 
