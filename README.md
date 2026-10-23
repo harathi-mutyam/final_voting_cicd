@@ -1,5 +1,4 @@
-# Voting App — Complete CI/CD, EKS, Monitoring and Cleanup Guide
-
+# Cloud-Native Voting Application: Automated CI/CD and GitOps Deployment on AWS EKS
 
 <p align="center">
   <img src="./images/Voting App CI_CD and EKS Workflow.png"
