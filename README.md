@@ -605,6 +605,7 @@ git push origin main
 ```
 
 **open your project github in browser-->actions-->runner-->observe workflow is running.If not running Select your workflow and use Run workflow if workflow_dispatch is enabled.**
+<img width="940" height="436" alt="image" src="https://github.com/user-attachments/assets/16fd3ed5-1cef-4081-aa3f-1d1256153b51" />
 
 
 
@@ -1001,11 +1002,8 @@ kubectl apply -f argocd/voting-app.yaml -n argocd
 
 Verify Application
 **open Argocd in browser and refresh it.**
-<p align="center">
-  <img src="./images/1.png"
-       alt="cicd workflow success"
-       width="900" />
-</p>
+<img width="665" height="601" alt="image" src="https://github.com/user-attachments/assets/5f71d0e4-e02b-4906-9c20-e933157f0bd9" />
+
 In server gitbash terminal
 ```bash
 kubectl get application voting-app -n argocd
@@ -1022,15 +1020,12 @@ kubectl get secret postgres-auth -n voting
 ```bash
 kubectl get pvc -n voting
 ```
+<img width="940" height="55" alt="image" src="https://github.com/user-attachments/assets/086d7e5a-7581-4443-86d9-970f2be4a1d0" />
 
 ```bash
 kubectl get gateway,httproute -n voting
 ```
-<p align="center">
-  <img src="./images/2.png"
-       alt="gate way dns"
-       width="900" />
-</p>
+
 ```bash
 kubectl get httproute -n voting
 ```
@@ -1156,6 +1151,7 @@ kubectl top nodes
 ```
 
 error: Metrics API not available
+<img width="669" height="45" alt="image" src="https://github.com/user-attachments/assets/5214b684-8821-4416-a390-3bc687fe7168" />
 
 Check whether Metrics Server is installed
 ```bash
@@ -1266,6 +1262,7 @@ Look for the dashboard:
 
 You should be able to inspect CPU and memory usage for the Voting App Pods.
 
+<img width="940" height="458" alt="image" src="https://github.com/user-attachments/assets/0621d2bd-506f-4e48-80f8-8d2cddd21e6f" />
 
 ## Step 17 — Verify Alertmanager
 
@@ -1312,8 +1309,7 @@ Also check available memory and CPU allocations:
 ```bash
 kubectl describe nodes | grep -A 8 "Allocated resources:"
 ```
-
-Notes for reference
+<img width="940" height="347" alt="image" src="https://github.com/user-attachments/assets/fa7e8c3c-3ffb-4ad9-87b4-6e80fc342b54" />
 
 | Metric | Node 1 | Node 2 |
 | --- | --- | --- |
@@ -1373,6 +1369,10 @@ kubectl get pods -A \
   -o jsonpath='{range .items[*]}{.metadata.namespace}{" / "}{.metadata.name}{" / "}{range .status.containerStatuses[*]}{.name}{": "}{.lastState.terminated.reason}{" "}{end}{"\n"}{end}' \
   | grep OOMKilled
 ```
+<img width="940" height="218" alt="image" src="https://github.com/user-attachments/assets/9f8c7a3e-be97-4fc9-98ae-574f706c129b" />
+
+<img width="299" height="512" alt="image" src="https://github.com/user-attachments/assets/2ca11291-583d-4cf2-814a-89893765830c" />
+
 
 Here I am using an Amazon S3 bucket instead of filesystem storage for Loki
 
@@ -1439,6 +1439,9 @@ done
 ```bash
 aws s3 ls | grep voting-loki
 ```
+
+<img width="816" height="75" alt="image" src="https://github.com/user-attachments/assets/b74b368a-9856-4238-b67e-d7c6e124281d" />
+
 
 #### Create a dedicated IAM policy
 
@@ -1611,6 +1614,9 @@ kubectl top nodes
 kubectl get pods -A
 ```
 
+<img width="940" height="715" alt="image" src="https://github.com/user-attachments/assets/77835b19-1fed-47a9-83c9-a39f55b3abec" />
+
+
 **If sufficient capacity remains, install:**
 ```bash
 helm upgrade --install loki  grafana-community/loki \
@@ -1626,6 +1632,7 @@ kubectl get pvc -n logging
 kubectl get svc -n logging
 helm list -n logging
 ```
+<img width="940" height="276" alt="image" src="https://github.com/user-attachments/assets/36ce7c27-2ed1-40fa-a9a9-4cc0f33fa673" />
 
 **Open new gitbash terminal login with server ec2 publicip**
 ```bash
@@ -1649,6 +1656,8 @@ curl http://localhost:3100/ready
 ```
 
 A healthy Loki instance should return ready.
+
+<img width="650" height="79" alt="image" src="https://github.com/user-attachments/assets/f0ebc890-8425-4f44-a888-f42031fdb109" />
 
 ## Step 22 — Connect Loki to Existing Grafana
 
@@ -1679,6 +1688,7 @@ After Alloy begins forwarding logs, check that Loki is writing objects into S3:
 ```bash
 aws s3 ls "s3://${LOKI_CHUNKS_BUCKET}/" --recursive --summarize
 ```
+<img width="939" height="84" alt="image" src="https://github.com/user-attachments/assets/ac4246ae-e30c-4066-99af-c5f867e314ee" />
 
 You can also inspect the ruler bucket:
 
@@ -1708,6 +1718,7 @@ kubectl get pods -n logging -o wide
 kubectl get pods -A | grep -i alloy
 helm list -A
 ```
+<img width="940" height="168" alt="image" src="https://github.com/user-attachments/assets/85d8a426-36dc-4437-b181-2c4b74158146" />
 
 ## Step 24 — check the Configuration of loki-values.yaml
 
@@ -1787,6 +1798,7 @@ kubectl top pods -n logging
 kubectl top nodes
 
 ```
+<img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/6794b3e9-4914-408f-86e1-5135a4ea7961" />
 
 Total Alloy memory usage: 87 MiB across both worker nodes.
 
@@ -1807,6 +1819,8 @@ kubectl get svc -n logging
 ```
 
 Confirm that loki-gateway exists and exposes port 80.
+
+<img width="878" height="183" alt="image" src="https://github.com/user-attachments/assets/73f1f1a7-94c9-4285-a040-f3c59a7412d6" />
 
 ## Step 26 — Verify Grafana logs
 
@@ -1844,13 +1858,22 @@ To check individual services:
 {namespace="voting",container="vote"}
 ```
 
+<img width="700" height="485" alt="image" src="https://github.com/user-attachments/assets/b85cf82f-1a1e-46af-ba61-f6bddd94acde" />
+
+
 ```bash
 {namespace="voting",container="result"}
 ```
 
+<img width="940" height="532" alt="image" src="https://github.com/user-attachments/assets/cb741327-1da3-43b4-93a6-c5da26420850" />
+
+
 ```bash
 {namespace="voting",container="worker"}
 ```
+
+<img width="940" height="481" alt="image" src="https://github.com/user-attachments/assets/7da0a81b-1e7e-4f0b-a57b-6b6782a4e23f" />
+
 
 Click on Data Sources-->select loki-->Build a Dashboard
 
