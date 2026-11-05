@@ -1151,6 +1151,7 @@ kubectl top nodes
 ```
 
 error: Metrics API not available
+
 <img width="669" height="45" alt="image" src="https://github.com/user-attachments/assets/5214b684-8821-4416-a390-3bc687fe7168" />
 
 Check whether Metrics Server is installed
