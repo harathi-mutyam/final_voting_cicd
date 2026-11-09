@@ -6,6 +6,9 @@
        width="900" />
 </p>
 
+
+<img width="940" height="627" alt="image" src="https://github.com/user-attachments/assets/61cb3cd8-93c1-40c9-a73d-5bc8d3330122" />
+
 ## Step 1 — Create a Security Group
 security group name: **githubaction_sg**
 
